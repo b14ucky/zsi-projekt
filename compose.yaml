@@ -1,0 +1,52 @@
+services:
+  ollama-app:
+    build: .
+    container_name: ollama-app
+    networks:
+      - app-net
+    volumes:
+      - model:/root/.ollama
+    develop:
+      watch:
+        - path: ./Dockerfile
+          action: rebuild
+
+  backend:
+    build: ./backend/.
+    container_name: backend
+    networks:
+      - app-net
+    depends_on:
+      - ollama-app
+    develop:
+      watch:
+        - path: ./backend
+          action: sync
+          target: /app
+        - path: ./backend/requirements.txt
+          action: rebuild
+        - path: ./backend/Dockerfile
+          action: rebuild
+
+  frontend:
+    build: ./frontend/.
+    container_name: frontend
+    networks:
+      - app-net
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    develop:
+      watch:
+        - path: ./frontend
+          action: sync
+          target: /usr/share/nginx/html
+        - path: ./frontend/Dockerfile
+          action: rebuild
+
+networks:
+    app-net:
+        driver: bridge
+volumes:
+  model:

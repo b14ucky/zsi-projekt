@@ -1,0 +1,1 @@
+jak cos plik konfiguracyjny nginx'a przekopiowałem z tego naprawionego projektu
