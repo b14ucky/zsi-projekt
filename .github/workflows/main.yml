@@ -15,10 +15,10 @@ jobs:
       - name: Check code
         uses: actions/checkout@v2
       - name: build app
-        run: docker-compose build .
+        run: docker compose build
       - name: tests
         run: |
-         docker-compose up -d
+         docker compose up -d
          sleep 15
          curl -f 127.0.0.0:80 || (echo "Fail!" && exit 1)
-         docker-compose down
+         docker compose down
