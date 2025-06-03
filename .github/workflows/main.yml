@@ -1,0 +1,24 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check code
+        uses: actions/checkout@v3
+      - name: build app
+        run: docker compose build
+      - name: tests
+        run: |
+         docker compose up -d
+         sleep 15
+         curl -f 127.0.0.0:80 || (echo "Fail!" && exit 1)
+         docker compose down
