@@ -2,6 +2,8 @@ const chatForm = document.getElementById("chat-form");
 const chatWindow = document.getElementById("chat-window");
 const userInput = document.getElementById("user-input");
 const submitButton = chatForm.querySelector("button");
+const fileInput = document.getElementById("file-input");
+
 
 // Funkcja generuj¹ca unikalny identyfikator u¿ytkownika
 function generateUserId() {
@@ -24,32 +26,60 @@ userInput.focus();
 chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const message = userInput.value.trim();
-    if (!message) return;
+    const file = fileInput.files[0];
 
-    addMessage(message, "user");
+    if (!message && !file) return;
+
+    if (message) {
+        addMessage(message, "user");
+    }
     userInput.value = "";
     userInput.focus();
 
     userInput.disabled = true;
     submitButton.disabled = true;
+    fileInput.disabled = true;
 
     const typingIndicator = createTypingIndicator();
     chatWindow.appendChild(typingIndicator);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
     try {
-        const botReply = await fetchResponse(message);
-        chatWindow.removeChild(typingIndicator);
-        addMessage(botReply, "bot");
+        if (file) {
+            await uploadFile(file);
+            fileInput.value = ""; // wyczyœæ pole pliku po wys³aniu
+        }
+        if (message) {
+            const botReply = await fetchResponse(message);
+            addMessage(botReply, "bot");
+        }
     } catch (error) {
-        chatWindow.removeChild(typingIndicator);
         addMessage("Error: Failed to get response from bot.", "bot");
         console.error(error);
     }
 
+    chatWindow.removeChild(typingIndicator);
     userInput.disabled = false;
     submitButton.disabled = false;
+    fileInput.disabled = false;
     userInput.focus();
+});
+
+async function uploadFile(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("user_id", userId);
+
+    const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        throw new Error("File upload failed");
+    }
+    const data = await response.json();
+    addMessage(`(Wys³ano plik: ${data.filename})`, "user");
 });
 
 function addMessage(text, sender) {

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_ollama.llms import OllamaLLM
@@ -51,3 +51,20 @@ def generate(query: GenerateQuery):
     chat_histories[query.user_id] = history
 
     return {"response": response, "history": history}
+
+
+@app.post("/upload")
+async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
+    # Odczytaj zawartoœæ pliku jako tekst
+    content = await file.read()
+    try:
+        text = content.decode("utf-8")
+    except Exception:
+        return {"error": "Plik musi byæ tekstowy (UTF-8)."}
+
+    # Dodaj zawartoœæ pliku do historii u¿ytkownika
+    history = chat_histories.get(user_id, [])
+    history.append(f"User uploaded file '{file.filename}':\n{text}")
+    chat_histories[user_id] = history
+
+    return {"status": "file received", "filename": file.filename}
