@@ -78,7 +78,7 @@ async function uploadFile(file) {
 		throw new Error("File upload failed");
 	}
 	const data = await response.json();
-	addMessage(`(Wys�ano plik: ${data.filename})`, "user");
+	addMessage(`(file sended: ${data.filename})`, "user");
 }
 
 function addMessage(text, sender) {

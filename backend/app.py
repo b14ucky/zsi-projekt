@@ -31,16 +31,13 @@ chain = prompt | model
 
 chat_histories = {}
 
-
 class GenerateQuery(BaseModel):
     question: str
     user_id: str
 
-
 @app.get("/test")
 def test():
     return {"status": "OK"}
-
 
 @app.post("/generate")
 def generate(query: GenerateQuery):
@@ -62,7 +59,7 @@ async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
     try:
         text = content.decode("utf-8")
     except Exception:
-        return {"error": "Plik musi byc tekstowy (UTF-8)."}
+        return {"error": "File needs to be .txt (UTF-8)."}
 
     history = chat_histories.get(user_id, [])
     history.append(f"User uploaded file '{file.filename}':\n{text}")
