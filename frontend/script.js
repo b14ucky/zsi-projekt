@@ -3,6 +3,7 @@ const chatWindow = document.getElementById("chat-window");
 const userInput = document.getElementById("user-input");
 const submitButton = chatForm.querySelector("button");
 const fileInput = document.getElementById("file-input");
+const fileInputWrapper = fileInput.parentElement;
 
 function generateUserId() {
 	return "user_" + Math.random().toString(36).substr(2, 9);
@@ -19,6 +20,14 @@ function getUserId() {
 
 const userId = getUserId();
 userInput.focus();
+
+fileInput.addEventListener("change", () => {
+	if (fileInput.files.length > 0) {
+		fileInputWrapper.classList.add("file-selected");
+	} else {
+		fileInputWrapper.classList.remove("file-selected");
+	}
+});
 
 chatForm.addEventListener("submit", async (e) => {
 	e.preventDefault();
