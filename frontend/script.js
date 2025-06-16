@@ -4,12 +4,10 @@ const userInput = document.getElementById("user-input");
 const submitButton = chatForm.querySelector("button");
 const fileInput = document.getElementById("file-input");
 
-// Funkcja generuj�ca unikalny identyfikator u�ytkownika
 function generateUserId() {
 	return "user_" + Math.random().toString(36).substr(2, 9);
 }
 
-// Pobierz lub utw�rz identyfikator u�ytkownika
 function getUserId() {
 	let userId = localStorage.getItem("chat_user_id");
 	if (!userId) {
@@ -24,70 +22,86 @@ userInput.focus();
 
 chatForm.addEventListener("submit", async (e) => {
 	e.preventDefault();
-	const message = userInput.value.trim();
+	let message = userInput.value.trim();
 	const file = fileInput.files[0];
 
 	if (!message && !file) return;
-
-	if (message) {
-		addMessage(message, "user");
-	}
-	userInput.value = "";
-	userInput.focus();
 
 	userInput.disabled = true;
 	submitButton.disabled = true;
 	fileInput.disabled = true;
 
+	if (message) {
+		addMessage(message, "user");
+	}
+
+	let fileContent = "";
+	let fileNameForDisplay = "";
+
 	const typingIndicator = createTypingIndicator();
-	chatWindow.appendChild(typingIndicator);
-	chatWindow.scrollTop = chatWindow.scrollHeight;
 
 	try {
 		if (file) {
-			await uploadFile(file);
-			fileInput.value = ""; // wyczy�� pole pliku po wys�aniu
+			fileNameForDisplay = file.name;
+			addMessage(`(Processing file: ${fileNameForDisplay})`, "user-info");
+			fileContent = await readFileAsText(file);
 		}
-		if (message) {
-			const botReply = await fetchResponse(message);
+
+		chatWindow.appendChild(typingIndicator);
+		chatWindow.scrollTop = chatWindow.scrollHeight;
+
+		let combinedMessageForBot = message;
+		if (fileContent) {
+			const fileBlock = `\\n\\n--- Content of file ${fileNameForDisplay} ---\\n${fileContent}\\n--- End of file ${fileNameForDisplay} ---`;
+			combinedMessageForBot = message
+				? `${message}${fileBlock}`
+				: fileBlock.trim();
+		}
+
+		userInput.value = "";
+		fileInput.value = "";
+		fileInput.parentElement.classList.remove("file-selected");
+
+		if (combinedMessageForBot) {
+			const botReply = await fetchResponse(combinedMessageForBot);
 			addMessage(botReply, "bot");
+		} else if (!file) {
+			addMessage("(No message entered)", "bot");
 		}
 	} catch (error) {
-		addMessage("Error: Failed to get response from bot.", "bot");
+		addMessage("Error: Failed to process request.", "bot");
 		console.error(error);
+	} finally {
+		if (document.body.contains(typingIndicator)) {
+			chatWindow.removeChild(typingIndicator);
+		}
+		userInput.disabled = false;
+		submitButton.disabled = false;
+		fileInput.disabled = false;
+		userInput.focus();
 	}
-
-	chatWindow.removeChild(typingIndicator);
-	userInput.disabled = false;
-	submitButton.disabled = false;
-	fileInput.disabled = false;
-	userInput.focus();
 });
 
-async function uploadFile(file) {
-	const formData = new FormData();
-	formData.append("file", file);
-	formData.append("user_id", userId);
-
-	const response = await fetch("/api/upload", {
-		method: "POST",
-		body: formData,
+async function readFileAsText(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (event) => resolve(event.target.result);
+		reader.onerror = (error) => reject(error);
+		reader.readAsText(file);
 	});
-
-	if (!response.ok) {
-		throw new Error("File upload failed");
-	}
-	const data = await response.json();
-	addMessage(`(file sended: ${data.filename})`, "user");
 }
 
 function addMessage(text, sender) {
 	const msg = document.createElement("div");
-	msg.classList.add(
-		"message",
-		sender === "user" ? "user-message" : "bot-message"
-	);
-	msg.innerHTML = marked.parse(text);
+	msg.classList.add("message");
+	if (sender === "user") {
+		msg.classList.add("user-message");
+	} else if (sender === "bot") {
+		msg.classList.add("bot-message");
+	} else if (sender === "user-info") {
+		msg.classList.add("user-info-message");
+	}
+	msg.innerHTML = text ? marked.parse(text) : "";
 	chatWindow.appendChild(msg);
 	chatWindow.scrollTop = chatWindow.scrollHeight;
 }
@@ -108,7 +122,7 @@ async function fetchResponse(userMsg) {
 		method: "POST",
 		body: JSON.stringify({
 			question: userMsg,
-			user_id: userId, // Dodajemy identyfikator u�ytkownika do zapytania
+			user_id: userId,
 		}),
 		headers: {
 			"Content-Type": "application/json",

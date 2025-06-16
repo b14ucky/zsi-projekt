@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_ollama.llms import OllamaLLM
@@ -17,13 +17,17 @@ app.add_middleware(
 model = OllamaLLM(model="gemma3:1b", base_url="http://ollama-app:11434")
 
 template = """
-You are an AI assistant, answering user's questions.
+You are an AI assistant. Your primary goal is to answer the user's questions. 
+If the user's message includes content from a file, it will be clearly demarcated with '--- Content of file [filename] ---' and '--- End of file [filename] ---'. 
+You MUST treat the content within these markers as part of the user's current query and use it to inform your response. 
+Do not just acknowledge the file; actively use its content if relevant to the question.
 
 You have access to the history of your chat with the user. Here it is: {history}
 
-Words "User:" and "AI:" are used to indicate who is speaking.
+User messages in the history might also contain file content formatted in the same way.
 
-Here's the user's question: {question}
+Here is the user's current question (it may include file content as described above): 
+{question}
 """
 
 prompt = ChatPromptTemplate.from_template(template)
@@ -31,13 +35,16 @@ chain = prompt | model
 
 chat_histories = {}
 
+
 class GenerateQuery(BaseModel):
     question: str
     user_id: str
 
+
 @app.get("/test")
 def test():
     return {"status": "OK"}
+
 
 @app.post("/generate")
 def generate(query: GenerateQuery):
@@ -51,18 +58,3 @@ def generate(query: GenerateQuery):
     chat_histories[query.user_id] = history
 
     return {"response": response, "history": history}
-
-
-@app.post("/upload")
-async def upload_file(user_id: str = Form(...), file: UploadFile = File(...)):
-    content = await file.read()
-    try:
-        text = content.decode("utf-8")
-    except Exception:
-        return {"error": "File needs to be .txt (UTF-8)."}
-
-    history = chat_histories.get(user_id, [])
-    history.append(f"User uploaded file '{file.filename}':\n{text}")
-    chat_histories[user_id] = history
-
-    return {"status": "file received", "filename": file.filename}
