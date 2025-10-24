@@ -2,6 +2,8 @@
 
 A full-stack web application featuring a Python backend and a modern JavaScript frontend. The entire project is containerized using Docker for easy deployment and scalability.
 
+---
+
 > Full documentation [dokumnetacja.pdf](./dokumentacja.pdf)
 
 ---
